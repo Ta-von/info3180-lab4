@@ -8,7 +8,7 @@ import os
 from app import app
 from flask import render_template, request, redirect, url_for, flash, session, abort
 from werkzeug.utils import secure_filename
-
+from .forms import UploadForm
 
 ###
 # Routing for your application.
@@ -25,22 +25,39 @@ def about():
     """Render the website's about page."""
     return render_template('about.html', name="Mary Jane")
 
-
-@app.route('/upload', methods=['POST', 'GET'])
-def upload():
+@app.route('/files/')
+def files():
     if not session.get('logged_in'):
-        abort(401)
+         abort(401)
+    return render_template('files.html', file = get_uploaded_images())
+
+
+@app.route('/photo-upload', methods=['POST', 'GET'])
+def upload():
+    
+    if not session.get('logged_in'):
+         abort(401)
 
     # Instantiate your form class
+    if request.method == 'GET':
+        Upload = UploadForm()
+        return render_template('upload.html', form = Upload)
 
     # Validate file upload on submit
-    if request.method == 'POST':
+    Upload = UploadForm()
+    if request.method == 'POST' and Upload.validate_on_submit():
         # Get file data and save to your uploads folder
+        file = Upload.file.data
+        filename = secure_filename(file.filename)
+        print(filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'],filename))
+        
 
         flash('File Saved', 'success')
         return redirect(url_for('home'))
 
-    return render_template('upload.html')
+   # return render_template('upload.html')
+    return redirect(url_for('home'))
 
 
 @app.route('/login', methods=['POST', 'GET'])
@@ -69,6 +86,15 @@ def logout():
 ###
 
 # Flash errors from the form if validation fails
+def get_uploaded_images():
+    rootdir = os.getcwd()
+    print (rootdir)
+    f = []
+    for subdir, dirs, files in os.walk(rootdir + r'\app\static\uploads'):
+        for file in files:
+            f.append(file)
+    return f[1:]
+    
 def flash_errors(form):
     for field, errors in form.errors.items():
         for error in errors:
